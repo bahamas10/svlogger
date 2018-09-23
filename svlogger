@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+#
+# Generic `svlogd` wrapper for runit services that is meant to be symlinked to
+# `/.../<service-name>/log/run`.
+#
+# This script will automatically figure out the service name under which it is
+# running and write out logs to a file under a directory with that service name.
+#
+# Alternatively, this script can be called with an optional first argument to
+# specify the service log base directory; the default is `/tmp/sv/log`.
+#
+# Author: Dave Eddy <dave@daveeddy.com>
+# Date: September 17, 2018
+# License: MIT
+
+# Logs will be written to $logdirbase/$servicename/
+logdirbase=${1:-/tmp/sv/log}
+
+# Arguments to pass to `svlogd`
+svlogdargs=('-tt')
+
+# Figure out service name.  To do this, we split $PWD on '/' characters and
+# construct an array with each element.  We know that our $PWD will look
+# something like:
+#
+#  '/.../<service-name>/log'
+#
+# So the second-to-last element will contain the service name.
+IFS=/ read -ra parts <<< "$PWD"
+len=${#parts[@]}
+
+# 'parts' must have at least 3 elements ('', <service-name>, and 'log').
+if ((len < 3)); then
+	echo "failed to determine service name from '$PWD'" >&2
+	exit 1
+fi
+
+# Sanity check the last element (should be 'log')
+index=$((len - 1))
+log=${parts[index]}
+if [[ $log != 'log' ]]; then
+	echo "must be run from a 'log' directory, found: '$log' ($PWD)" >&2
+	exit 1
+fi
+
+# Sanity check the service name
+index=$((len - 2))
+servicename=${parts[index]}
+if [[ -z $servicename ]]; then
+	echo 'failed to extract service name' >&2
+	echo "index $index, parts '${parts[*]}'" >&2
+	exit 1
+fi
+
+logdir=$logdirbase/$servicename
+
+# Create the directory and start the logger
+mkdir -p "$logdir"
+exec svlogd "${svlogdargs[@]}" "$logdir"

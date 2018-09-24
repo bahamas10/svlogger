@@ -18,8 +18,8 @@ Installation
 I personally use this script on Void Linux and put it in `/etc/sv`.  You
 can do this with:
 
-    # chmod +x svlogger
-    # cp svlogger /etc/sv
+    $ sudo make install
+    cp svlogger /etc/sv
 
 Usage
 -----
